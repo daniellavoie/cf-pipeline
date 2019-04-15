@@ -1,0 +1,22 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: bosh/main-bosh-docker
+
+inputs:
+- name: cf-pipeline
+- name: runtime-configs
+
+outputs:
+- name: build
+
+params:
+  BOSH_ENVIRONMENT: ((bosh.environment))
+  BOSH_CLIENT: ((bosh.client))
+  BOSH_CLIENT_SECRET: ((bosh.client-secret))
+
+run:
+  path: cf-pipeline/tasks/bosh-apply-runtime-configs/bosh-apply-runtime-configs.sh

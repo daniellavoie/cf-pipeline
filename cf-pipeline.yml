@@ -1,0 +1,70 @@
+---
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: cf-deployment-release
+  type: github-release
+  source:
+    owner: cloudfoundry
+    repository: cf-deployment
+
+- name: runtime-configs
+  type: git
+  source:
+    uri: ((runtime-configs.git.uri))
+    private_key: ((runtime-configs.git.private-key))
+    branch: master
+    paths:
+    - "runtime-configs"
+
+- name: cf-pipeline
+  type: git
+  source:
+    uri: ((cf-pipeline.git-uri))
+    branch: master
+    ignore_paths:
+    - "runtime-configs"
+
+- name: stemcell-vsphere-xenial
+  type: github-release
+  source:
+    owner: cloudfoundry
+    repository: cf-deployment
+
+- name: slack-cf-pipeline
+  type: slack-notification
+  source:
+    url: ((slack.cf-pipeline-webhook-url))
+
+jobs:
+
+- name: Notify stemcell release
+  plan:
+  - get: stemcell-vsphere-xenial
+    trigger: true
+  - put: slack-cf-pipeline
+    params:
+      text: |
+        A New version of the xenial stemcell for vpshere is available. Details available here : ((cf-pipeline.concourse-url))/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+
+- name: Notify cf-deployment release
+  plan:
+  - get: cf-deployment-release
+    trigger: true
+  - put: slack-cf-pipeline
+    params:
+      text: |
+        A New version of cf-deployment is available. Details available here : ((cf-pipeline.concourse-url))/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+
+- name: Update Runtime Configs
+  plan:
+  - get: runtime-configs
+    trigger: true
+  - get: cf-pipeline
+  - task: Update Runtime Configs
+    file: cf-pipeline/tasks/bosh-apply-runtime-configs/bosh-apply-runtime-configs.yml

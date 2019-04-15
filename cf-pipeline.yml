@@ -7,11 +7,12 @@ resource_types:
     tag: latest
 
 resources:
-- name: cf-deployment-release
+- name: cf-deployment-git-release
   type: github-release
   source:
     owner: cloudfoundry
     repository: cf-deployment
+    access_token: ((cf-deployment.github.access-token))
 
 - name: runtime-configs
   type: git
@@ -21,6 +22,15 @@ resources:
     branch: master
     paths:
     - "runtime-configs"
+
+- name: deployment-profiles
+  type: git
+  source:
+    uri: ((deployment-profiles.git.uri))
+    private_key: ((deployment-profiles.git.private-key))
+    branch: master
+    paths:
+    - "deployment-profiles"
 
 - name: cf-pipeline
   type: git
@@ -42,7 +52,6 @@ resources:
     url: ((slack.cf-pipeline-webhook-url))
 
 jobs:
-
 - name: Notify stemcell release
   plan:
   - get: stemcell-vsphere-xenial
@@ -54,7 +63,7 @@ jobs:
 
 - name: Notify cf-deployment release
   plan:
-  - get: cf-deployment-release
+  - get: cf-deployment-git-release
     trigger: true
   - put: slack-cf-pipeline
     params:
@@ -68,3 +77,36 @@ jobs:
   - get: cf-pipeline
   - task: Update Runtime Configs
     file: cf-pipeline/tasks/bosh-apply-runtime-configs/bosh-apply-runtime-configs.yml
+    params:
+      BOSH_ENVIRONMENT: ((bosh.environment))
+      BOSH_CA_CERT: ((bosh.ca-cert))
+      BOSH_CLIENT: ((bosh.client))
+      BOSH_CLIENT_SECRET: ((bosh.client-secret))
+
+- name: Deploy Cloud Foundry
+  plan:
+  - get: cf-pipeline
+  - get: deployment-profiles
+  - get: cf-deployment-git-release
+    params:
+      include_source_tarball: true
+  - task: Unpack cf-deployment
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: bosh/main-bosh-docker
+      inputs:
+      - name: cf-deployment-git-release
+      outputs: 
+      - name: cf-deployment-release
+      run:
+        path: bash
+        args: [-c, tar -xvf cf-deployment-git-release/source.tar.gz -C cf-deployment-release --strip-components=1 --strip 1]
+  - task: Deploy Cloud Foundry with Bosh
+    file: cf-pipeline/tasks/bosh-deploy/bosh-deploy.yml
+    params:
+      DEPLOYMENT_NAME: cf
+      DEPLOYMENT_FILE: cf-deployment-release/cf-deployment.yml
+      DEPLOYMENT_PROFILE: deployment-profiles/deployment-profiles/cf-daniellavoie.bosh

@@ -2,9 +2,8 @@
 
 set -x
 
-for RUNTIME_CONFIG_FILE in runtime-configs/*.yml
-do
-  if [[ -f $file ]]; then
+for RUNTIME_CONFIG_FILE in runtime-configs/runtime-configs/*.yml; do
+  if [[ -f $RUNTIME_CONFIG_FILE ]]; then
     RUNTIME_CONFIG_NAME=$(basename -- "${RUNTIME_CONFIG_FILE%%.*}")
 
     echo Applying runtime config $RUNTIME_CONFIG_NAME with $RUNTIME_CONFIG_FILE

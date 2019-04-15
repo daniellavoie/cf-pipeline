@@ -14,9 +14,10 @@ outputs:
 - name: build
 
 params:
-  BOSH_ENVIRONMENT: ((bosh.environment))
-  BOSH_CLIENT: ((bosh.client))
-  BOSH_CLIENT_SECRET: ((bosh.client-secret))
+  BOSH_ENVIRONMENT:
+  BOSH_CA_CERT:
+  BOSH_CLIENT:
+  BOSH_CLIENT_SECRET:
 
 run:
   path: cf-pipeline/tasks/bosh-apply-runtime-configs/bosh-apply-runtime-configs.sh

@@ -1,0 +1,23 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: bosh/main-bosh-docker
+
+inputs:
+- name: cf-pipeline
+- name: cf-deployment-release
+- name: deployment-profiles
+
+outputs:
+- name: build
+
+params:
+  DEPLOYMENT_NAME:
+  DEPLOYMENT_FILE:
+  DEPLOYMENT_PROFILE:
+
+run:
+  path: cf-pipeline/tasks/bosh-deploy/bosh-deploy.sh

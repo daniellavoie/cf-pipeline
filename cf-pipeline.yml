@@ -41,10 +41,9 @@ resources:
     - "runtime-configs"
 
 - name: stemcell-vsphere-xenial
-  type: github-release
+  type: bosh-io-stemcell
   source:
-    owner: cloudfoundry
-    repository: cf-deployment
+    name: bosh-vsphere-esxi-ubuntu-xenial-go_agent
 
 - name: slack-cf-pipeline
   type: slack-notification
@@ -52,10 +51,22 @@ resources:
     url: ((slack.cf-pipeline-webhook-url))
 
 jobs:
-- name: Notify stemcell release
+- name: Upload vSphere Xenial Stemcell
   plan:
   - get: stemcell-vsphere-xenial
     trigger: true
+  - task: Upload vSphere Xenial Stemcell
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: bosh/main-bosh-docker
+      inputs:
+      - name: stemcell-vsphere-xenial
+      run:
+        path: bash
+        args: [-c, bosh upload-stemcell stemcell-vsphere-xenial/stemcell.tgz]
   - put: slack-cf-pipeline
     params:
       text: |
@@ -107,6 +118,10 @@ jobs:
   - task: Deploy Cloud Foundry with Bosh
     file: cf-pipeline/tasks/bosh-deploy/bosh-deploy.yml
     params:
+      BOSH_ENVIRONMENT: ((bosh.environment))
+      BOSH_CA_CERT: ((bosh.ca-cert))
+      BOSH_CLIENT: ((bosh.client))
+      BOSH_CLIENT_SECRET: ((bosh.client-secret))
       DEPLOYMENT_NAME: cf
       DEPLOYMENT_FILE: cf-deployment-release/cf-deployment.yml
       DEPLOYMENT_PROFILE: deployment-profiles/deployment-profiles/cf-daniellavoie.bosh
